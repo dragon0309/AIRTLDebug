@@ -1,0 +1,8 @@
+.env
+*.out
+*.vcd
+*.o
+__pycache__/
+.venv/
+outputs/*/
+!outputs/.gitkeep
