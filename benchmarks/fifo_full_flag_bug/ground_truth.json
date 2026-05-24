@@ -1,0 +1,15 @@
+{
+  "case_name": "fifo_full_flag_bug",
+  "bug_type": "fifo full flag logic",
+  "root_cause": "full is computed as wr_ptr == rd_ptr without considering wrap_bit, so full and empty are ambiguous.",
+  "suspicious_signals": ["full", "wr_ptr", "rd_ptr", "wrap_bit"],
+  "suspicious_regions": [
+    {
+      "file": "design_buggy.sv",
+      "start_line": 43,
+      "end_line": 44,
+      "description": "assign statements that compute full and empty"
+    }
+  ],
+  "expected_fix": "Assert full when wr_ptr == rd_ptr && wrap_bit is set."
+}
