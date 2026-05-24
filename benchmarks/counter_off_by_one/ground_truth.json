@@ -1,0 +1,15 @@
+{
+  "case_name": "counter_off_by_one",
+  "bug_type": "counter off-by-one",
+  "root_cause": "done is asserted one cycle too early because the comparison condition uses MAX - 1.",
+  "suspicious_signals": ["count", "done"],
+  "suspicious_regions": [
+    {
+      "file": "design_buggy.sv",
+      "start_line": 11,
+      "end_line": 21,
+      "description": "sequential always block that updates count and done"
+    }
+  ],
+  "expected_fix": "Compare count with MAX, or compute next_count and compare next_count with MAX."
+}
