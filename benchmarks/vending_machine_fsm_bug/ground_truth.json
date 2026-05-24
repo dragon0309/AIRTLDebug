@@ -1,0 +1,15 @@
+{
+  "case_name": "vending_machine_fsm_bug",
+  "bug_type": "fsm output timing",
+  "root_cause": "The FSM enters ST_DISPENSE but the sequential output logic never asserts dispense when credit reaches the price.",
+  "suspicious_signals": ["state", "dispense", "credit", "next_state"],
+  "suspicious_regions": [
+    {
+      "file": "design_buggy.sv",
+      "start_line": 36,
+      "end_line": 68,
+      "description": "sequential always block with FSM state and output case statement"
+    }
+  ],
+  "expected_fix": "Assert dispense in ST_DISPENSE when credit >= PRICE."
+}
