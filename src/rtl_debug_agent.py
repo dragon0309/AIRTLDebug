@@ -18,6 +18,7 @@ from rtl_extractor import extract_context  # noqa: E402
 from sim_runner import run_buggy_simulation, run_fixed_simulation  # noqa: E402
 from llm_client import run_llm_analysis  # noqa: E402
 from report_writer import write_debug_report  # noqa: E402
+from prompt_builder import build_full_flow_prompt  # noqa: E402
 
 def _write_json(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -234,6 +235,10 @@ def main(argv: list[str] | None = None) -> int:
         _print_summary(intermediate)
         return 0
 
+    prompt = build_full_flow_prompt(intermediate)
+    prompt_path = output_dir / "full_flow_prompt.txt"
+    prompt_path.write_text(prompt, encoding="utf-8")
+
     model = args.model or "mock"
     llm_analysis = run_llm_analysis(intermediate, model=model)
 
@@ -245,6 +250,7 @@ def main(argv: list[str] | None = None) -> int:
 
     _print_summary(intermediate)
     print(f"  Report: {report_path}")
+    print(f"  Prompt: {prompt_path}")
 
     return 0
 
