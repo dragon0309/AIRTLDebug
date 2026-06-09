@@ -167,13 +167,8 @@ def _interactive_menu(case_path: str, output_dir: Path, fix_check: bool) -> int:
                 print(block["code"])
 
         elif choice == "3":
-            llm_analysis = run_llm_analysis(intermediate, model="mock")
-            print("\nLLM Root Cause Analysis")
-            print(f"- Bug summary: {llm_analysis.get('bug_summary')}")
-            print(f"- Root cause: {llm_analysis.get('root_cause')}")
-            print(f"- Evidence: {llm_analysis.get('evidence')}")
-            print(f"- Suggested fix: {llm_analysis.get('suggested_fix')}")
-            print(f"- Confidence: {llm_analysis.get('confidence_score')}")
+            prompt = build_full_flow_prompt(intermediate)
+            llm_analysis = run_llm_analysis(intermediate, model="mock", prompt=prompt)
 
         elif choice == "4":
             prompt = build_full_flow_prompt(intermediate)
@@ -283,7 +278,7 @@ def main(argv: list[str] | None = None) -> int:
     prompt_path.write_text(prompt, encoding="utf-8")
 
     model = args.model or "mock"
-    llm_analysis = run_llm_analysis(intermediate, model=model)
+    llm_analysis = run_llm_analysis(intermediate, model=model, prompt=prompt)
 
     output_path = args.output
     if output_path is None:
