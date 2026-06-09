@@ -16,7 +16,8 @@ from case_loader import load_case  # noqa: E402
 from log_parser import parse_simulation_log_file  # noqa: E402
 from rtl_extractor import extract_context  # noqa: E402
 from sim_runner import run_buggy_simulation, run_fixed_simulation  # noqa: E402
-
+from llm_client import run_llm_analysis  # noqa: E402
+from report_writer import write_debug_report  # noqa: E402
 
 def _write_json(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -231,6 +232,19 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.no_llm:
         _print_summary(intermediate)
+        return 0
+
+    model = args.model or "mock"
+    llm_analysis = run_llm_analysis(intermediate, model=model)
+
+    output_path = args.output
+    if output_path is None:
+        output_path = str(output_dir / "debug_report.md")
+
+    report_path = write_debug_report(intermediate, llm_analysis, output_path)
+
+    _print_summary(intermediate)
+    print(f"  Report: {report_path}")
 
     return 0
 
