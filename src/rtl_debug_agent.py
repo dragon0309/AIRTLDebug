@@ -144,18 +144,20 @@ def _interactive_menu(case_path: str, output_dir: Path, fix_check: bool) -> int:
         print("\nInteractive RTL Debug Menu")
         print("1. Show buggy simulation log")
         print("2. Show extracted suspicious RTL blocks")
-        print("3. Generate LLM analysis (requires B-side)")
-        print("4. Generate report (requires B-side)")
+        print("3. Generate LLM analysis")
+        print("4. Generate report")
         print("5. Run fixed RTL verification")
-        print("6. Full analysis with LLM (requires B-side)")
+        print("6. Full analysis with LLM")
         print("0. Exit")
         choice = input("Select option: ").strip()
 
         if choice == "0":
             return 0
+
         if choice == "1":
             log_path = intermediate["simulation"]["buggy"]["log_path"]
             print(Path(log_path).read_text(encoding="utf-8"))
+
         elif choice == "2":
             for block in intermediate["extracted_context"]["suspicious_code_blocks"]:
                 print(
@@ -163,8 +165,30 @@ def _interactive_menu(case_path: str, output_dir: Path, fix_check: bool) -> int:
                     f"{block['end_line']} ---"
                 )
                 print(block["code"])
-        elif choice in {"3", "4", "6"}:
-            print("[WARN] LLM/report module is not available in this build.")
+
+        elif choice == "3":
+            llm_analysis = run_llm_analysis(intermediate, model="mock")
+            print("\nLLM Root Cause Analysis")
+            print(f"- Bug summary: {llm_analysis.get('bug_summary')}")
+            print(f"- Root cause: {llm_analysis.get('root_cause')}")
+            print(f"- Evidence: {llm_analysis.get('evidence')}")
+            print(f"- Suggested fix: {llm_analysis.get('suggested_fix')}")
+            print(f"- Confidence: {llm_analysis.get('confidence_score')}")
+
+        elif choice == "4":
+            prompt = build_full_flow_prompt(intermediate)
+            prompt_path = output_dir / "full_flow_prompt.txt"
+            prompt_path.write_text(prompt, encoding="utf-8")
+
+            llm_analysis = run_llm_analysis(intermediate, model="mock")
+            report_path = write_debug_report(
+                intermediate,
+                llm_analysis,
+                output_dir / "debug_report.md",
+            )
+            print(f"Report written to: {report_path}")
+            print(f"Prompt written to: {prompt_path}")
+
         elif choice == "5":
             case_data = load_case(case_path)
             fixed_result = run_fixed_simulation(case_data, output_dir)
@@ -178,6 +202,25 @@ def _interactive_menu(case_path: str, output_dir: Path, fix_check: bool) -> int:
                 "status": fixed_result["status"],
             }
             _write_json(output_dir / "intermediate.json", intermediate)
+
+        elif choice == "6":
+            prompt = build_full_flow_prompt(intermediate)
+            prompt_path = output_dir / "full_flow_prompt.txt"
+            prompt_path.write_text(prompt, encoding="utf-8")
+
+            llm_analysis = run_llm_analysis(intermediate, model="mock")
+            report_path = write_debug_report(
+                intermediate,
+                llm_analysis,
+                output_dir / "debug_report.md",
+            )
+
+            print("\nFull LLM Analysis")
+            print(f"- Root cause: {llm_analysis.get('root_cause')}")
+            print(f"- Suggested fix: {llm_analysis.get('suggested_fix')}")
+            print(f"- Report: {report_path}")
+            print(f"- Prompt: {prompt_path}")
+
         else:
             print("Invalid option.")
     return 0
