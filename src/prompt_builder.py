@@ -63,13 +63,17 @@ Rules:
 - Explain how the suggested fix addresses the failure.
 
 Required output format:
-1. Bug summary
-2. Suspicious signals
-3. Suspicious RTL lines or regions
-4. Root cause explanation
-5. Suggested fix
-6. Evidence from simulation log
-7. Confidence score
+Return ONLY a valid JSON object with the following keys:
+{{
+  "bug_summary": "...",
+  "suspicious_signals": ["..."],
+  "suspicious_regions": ["..."],
+  "root_cause": "...",
+  "suggested_fix": "...",
+  "evidence": "...",
+  "confidence_score": "..."
+}}
+Do not wrap the JSON in Markdown code fences.
 
 # Design Specification
 
