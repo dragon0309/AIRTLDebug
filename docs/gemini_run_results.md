@@ -49,7 +49,7 @@ Fixed RTL simulation：PASS。
 
 ## fifo_full_flag_bug
 
-Gemini 能定位 FIFO `full` flag 的判斷邏輯錯誤。原本邏輯沒有正確處理 write pointer wrap-around 後的狀態。
+Gemini 能定位 FIFO `full` flag 的判斷邏輯錯誤。原本邏輯使用 `!wrap_bit`，導致 write pointer wrap-around 後，`wr_ptr == rd_ptr` 時沒有正確 assert `full`。
 
 Fixed RTL simulation：PASS。
 
