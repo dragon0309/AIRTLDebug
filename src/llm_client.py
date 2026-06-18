@@ -44,9 +44,9 @@ def _gemini_analysis(prompt: str) -> dict[str, Any]:
 
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-        )
+        model="gemini-2.5-flash-lite",
+        contents=prompt,
+)
         text = response.text or ""
     except Exception as exc:  # noqa: BLE001
         return {
