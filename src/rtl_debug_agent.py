@@ -136,7 +136,7 @@ def run_pipeline(
     return intermediate, 0
 
 
-def _interactive_menu(case_path: str, output_dir: Path, fix_check: bool) -> int:
+def _interactive_menu(case_path: str, output_dir: Path, fix_check: bool, model: str = "mock") -> int:
     intermediate, exit_code = run_pipeline(case_path, output_dir, fix_check=fix_check)
     if exit_code != 0:
         return exit_code
@@ -169,14 +169,14 @@ def _interactive_menu(case_path: str, output_dir: Path, fix_check: bool) -> int:
 
         elif choice == "3":
             prompt = build_full_flow_prompt(intermediate)
-            llm_analysis = run_llm_analysis(intermediate, model="mock", prompt=prompt)
+            llm_analysis = run_llm_analysis(intermediate, model=model, prompt=prompt)
 
         elif choice == "4":
             prompt = build_full_flow_prompt(intermediate)
             prompt_path = output_dir / "full_flow_prompt.txt"
             prompt_path.write_text(prompt, encoding="utf-8")
 
-            llm_analysis = run_llm_analysis(intermediate, model="mock")
+            llm_analysis = run_llm_analysis(intermediate, model=model)
             report_path = write_debug_report(
                 intermediate,
                 llm_analysis,
@@ -204,7 +204,7 @@ def _interactive_menu(case_path: str, output_dir: Path, fix_check: bool) -> int:
             prompt_path = output_dir / "full_flow_prompt.txt"
             prompt_path.write_text(prompt, encoding="utf-8")
 
-            llm_analysis = run_llm_analysis(intermediate, model="mock")
+            llm_analysis = run_llm_analysis(intermediate, model=model)
             report_path = write_debug_report(
                 intermediate,
                 llm_analysis,
@@ -248,7 +248,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         case_data = load_case(args.case)
         output_dir = Path(args.output_dir or f"outputs/{case_data['case_name']}")
-        return _interactive_menu(args.case, output_dir, args.fix_check)
+        return _interactive_menu(args.case, output_dir, args.fix_check, model=args.model or "mock")
 
     if not args.case:
         print("--case is required", file=sys.stderr)

@@ -108,11 +108,11 @@ outputs/counter_off_by_one/
 ### Run All Benchmark Cases
 
 ```bash
-# A-side batch run (no LLM)
-bash scripts/run_all_cases.sh
-
-# Full experiment with mock LLM + CSV summary
+# Full experiment with mock LLM + CSV summary (recommended)
 uv run python scripts/run_experiments.py
+
+# A-side batch run only (no LLM)
+bash scripts/run_all_cases.sh
 ```
 
 ### Interactive Mode
@@ -135,6 +135,8 @@ The interactive menu provides:
 6. Full analysis with LLM
 0. Exit
 ```
+
+**Note:** Interactive LLM actions (options 3, 4, 6) respect the `--model` flag. If `--model` is not specified, they default to the mock backend.
 
 ### Run Tests
 
@@ -242,7 +244,7 @@ Generated artifacts under `outputs/` and `docs/sample_reports/` are execution re
   ┌──────────────┐
   │  Benchmark   │  benchmarks/<case>/
   │  Case Input  │  (design_buggy.sv, design_fixed.sv, tb.sv,
-  └──────┬───────┘   spec.md, ground_truth.json)
+  └──────┬───────┘   spec.md, expected_root_cause.md, ground_truth.json)
          │
          ▼
   ┌──────────────┐
@@ -354,8 +356,9 @@ FUNCTION build_full_flow_prompt(intermediate):
         1. System role: "You are an RTL debugging assistant."
         2. Given information: spec, failure, signals, blocks
         3. Rules: base on evidence only, explain why and how
-        4. Output format: JSON with bug_summary, root_cause,
-           suggested_fix, evidence, confidence_score
+        4. Output format: JSON with bug_summary, suspicious_signals,
+           suspicious_regions, root_cause, suggested_fix, evidence,
+           confidence_score
         5. Design specification (from intermediate.spec)
         6. Parsed failure details (cycle, signal, expected, actual)
         7. Suspicious signals list
@@ -392,7 +395,7 @@ This is the core heuristic module. Given the buggy RTL source text and the parse
 
 ### 5. Prompt Builder (`prompt_builder.py`)
 
-Assembles a structured LLM prompt from the intermediate data. The prompt includes the design specification, parsed failure details, filtered suspicious signals (removing noise tokens), and the extracted RTL code blocks formatted in SystemVerilog code fences. The prompt instructs the LLM to return a JSON object with `bug_summary`, `root_cause`, `suggested_fix`, `evidence`, and `confidence_score`.
+Assembles a structured LLM prompt from the intermediate data. The prompt includes the design specification, parsed failure details, filtered suspicious signals (removing noise tokens), and the extracted RTL code blocks formatted in SystemVerilog code fences. The prompt instructs the LLM to return a JSON object with `bug_summary`, `suspicious_signals`, `suspicious_regions`, `root_cause`, `suggested_fix`, `evidence`, and `confidence_score`.
 
 ### 6. LLM Client (`llm_client.py`)
 

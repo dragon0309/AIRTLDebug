@@ -13,31 +13,29 @@ CASES=(
 declare -A BUGGY_STATUS
 declare -A FIXED_STATUS
 
-if ! command -v python3 >/dev/null 2>&1 && ! command -v python >/dev/null 2>&1; then
-  echo "ERROR: python is not available"
+if ! command -v uv >/dev/null 2>&1; then
+  echo "ERROR: uv is not installed. See https://docs.astral.sh/uv/"
   exit 1
 fi
 
-PYTHON="${PYTHON:-python3}"
-if ! command -v "$PYTHON" >/dev/null 2>&1; then
-  PYTHON=python
-fi
+FAIL_COUNT=0
 
 for case_name in "${CASES[@]}"; do
   case_path="benchmarks/${case_name}"
   echo "=== Running case: ${case_name} ==="
-  if ! "$PYTHON" src/rtl_debug_agent.py --case "$case_path" --no-llm --fix-check; then
+  if ! uv run python src/rtl_debug_agent.py --case "$case_path" --no-llm --fix-check; then
     echo "WARNING: CLI returned non-zero for ${case_name}; continuing"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
   fi
 
   intermediate="outputs/${case_name}/intermediate.json"
   if [[ -f "$intermediate" ]]; then
     BUGGY_STATUS["$case_name"]="$(
-      "$PYTHON" -c "import json; d=json.load(open('$intermediate')); print(d['simulation']['buggy']['status'])"
+      uv run python -c "import json; d=json.load(open('$intermediate')); print(d['simulation']['buggy']['status'])"
     )"
-    if [[ "$( "$PYTHON" -c "import json; d=json.load(open('$intermediate')); print(d['fix_verification']['enabled'])" )" == "True" ]]; then
+    if [[ "$( uv run python -c "import json; d=json.load(open('$intermediate')); print(d['fix_verification']['enabled'])" )" == "True" ]]; then
       FIXED_STATUS["$case_name"]="$(
-        "$PYTHON" -c "import json; d=json.load(open('$intermediate')); print(d['fix_verification']['status'])"
+        uv run python -c "import json; d=json.load(open('$intermediate')); print(d['fix_verification']['status'])"
       )"
     else
       FIXED_STATUS["$case_name"]="N/A"
@@ -52,3 +50,5 @@ printf "\nCase                       Buggy RTL    Fixed RTL\n"
 for case_name in "${CASES[@]}"; do
   printf "%-26s %-12s %s\n" "$case_name" "${BUGGY_STATUS[$case_name]}" "${FIXED_STATUS[$case_name]}"
 done
+
+exit "$FAIL_COUNT"
