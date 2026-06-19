@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+
 def _filter_signals(signals: list[str]) -> list[str]:
     ignored = {
         "d0",

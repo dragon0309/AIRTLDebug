@@ -1,0 +1,46 @@
+{
+  "suspicious_signals": [
+    "done",
+    "clk",
+    "reset",
+    "count",
+    "d0",
+    "b0",
+    "enable",
+    "MAX",
+    "b1",
+    "Bug",
+    "asserted",
+    "when",
+    "reaches",
+    "instead",
+    "of"
+  ],
+  "suspicious_code_blocks": [
+    {
+      "type": "sequential_always",
+      "file": "design_buggy.sv",
+      "start_line": 11,
+      "end_line": 21,
+      "code": "    always @(posedge clk) begin\n        if (reset) begin\n            count <= 5'd0;\n            done  <= 1'b0;\n        end else if (enable) begin\n            if (count < MAX)\n                count <= count + 1'b1;\n            // Bug: done asserted when count reaches MAX-1 instead of MAX.\n            done <= (count == MAX - 1);\n        end\n    end",
+      "matched_signals": [
+        "clk",
+        "reset",
+        "count",
+        "d0",
+        "done",
+        "b0",
+        "enable",
+        "MAX",
+        "b1",
+        "Bug",
+        "asserted",
+        "when",
+        "reaches",
+        "instead",
+        "of"
+      ]
+    }
+  ],
+  "extraction_warnings": []
+}

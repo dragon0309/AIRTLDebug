@@ -1,0 +1,2 @@
+[FAIL] cycle=9 signal=dispense expected=1 actual=0 message="dispense was not asserted after enough credit"
+benchmarks/vending_machine_fsm_bug/tb.sv:70: $finish called at 96000 (1ps)

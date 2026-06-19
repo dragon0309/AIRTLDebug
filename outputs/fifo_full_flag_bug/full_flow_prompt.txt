@@ -1,0 +1,121 @@
+You are an RTL debugging assistant.
+
+You are given:
+1. Design specification
+2. Parsed simulation failure
+3. Suspicious signals
+4. Extracted RTL code blocks
+
+Task:
+Find the most likely root cause of the RTL bug.
+
+Rules:
+- Base your answer only on the given RTL code and simulation evidence.
+- Do not invent signals that do not exist.
+- If the evidence is insufficient, state what is missing.
+- Explain why the failure happens.
+- Explain how the suggested fix addresses the failure.
+
+Required output format:
+Return ONLY a valid JSON object with the following keys:
+{
+  "bug_summary": "...",
+  "suspicious_signals": ["..."],
+  "suspicious_regions": ["..."],
+  "root_cause": "...",
+  "suggested_fix": "...",
+  "evidence": "...",
+  "confidence_score": "..."
+}
+Do not wrap the JSON in Markdown code fences.
+
+# Design Specification
+
+# FIFO Full Flag Bug Benchmark
+
+## Overview
+
+An 8-entry FIFO with separate read/write pointers and a wrap bit to distinguish full from empty.
+
+## Parameters
+
+- `DEPTH = 8`
+- Pointer width = 3 bits
+
+## Interface
+
+| Signal     | Direction | Description                              |
+|------------|-----------|------------------------------------------|
+| `clk`      | input     | Clock                                    |
+| `reset`    | input     | Synchronous reset                        |
+| `wr_en`    | input     | Write enable                             |
+| `rd_en`    | input     | Read enable                              |
+| `wr_ptr`   | output    | Write pointer                            |
+| `rd_ptr`   | output    | Read pointer                             |
+| `wrap_bit` | output    | Toggles when write pointer wraps         |
+| `full`     | output    | FIFO full flag                           |
+| `empty`    | output    | FIFO empty flag                          |
+
+## Expected Behavior
+
+- `empty` when `wr_ptr == rd_ptr` and no wrap has occurred.
+- `full` when `wr_ptr == rd_ptr` and the write pointer has wrapped at least once.
+
+## Top Module
+
+`fifo`
+
+
+# Parsed Simulation Failure
+
+- Status: FAIL
+- Failure cycle: 12
+- Failed signal: full
+- Expected: 1
+- Actual: 0
+- Message: full flag ignores wrap-around state
+- Raw failure line: [FAIL] cycle=12 signal=full expected=1 actual=0 message="full flag ignores wrap-around state"
+
+# Suspicious Signals
+
+full, clk, reset, wr_ptr, PTR_W, rd_ptr, wrap_bit, wr_en, fifo_full, mem, DEPTH, rd_en, empty
+
+# Extracted RTL Code Blocks
+
+File: design_buggy.sv
+Lines: 20-42
+Type: sequential_always
+Code:
+```systemverilog
+    always @(posedge clk) begin
+        if (reset) begin
+            wr_ptr   <= {PTR_W{1'b0}};
+            rd_ptr   <= {PTR_W{1'b0}};
+            wrap_bit <= 1'b0;
+        end else begin
+            if (wr_en && !fifo_full) begin
+                mem[wr_ptr] <= mem[wr_ptr];
+                if (wr_ptr == DEPTH - 1) begin
+                    wr_ptr   <= {PTR_W{1'b0}};
+                    wrap_bit <= ~wrap_bit;
+                end else begin
+                    wr_ptr <= wr_ptr + 1'b1;
+                end
+            end
+            if (rd_en && !empty) begin
+                if (rd_ptr == DEPTH - 1)
+                    rd_ptr <= {PTR_W{1'b0}};
+                else
+                    rd_ptr <= rd_ptr + 1'b1;
+            end
+        end
+    end
+```
+
+File: design_buggy.sv
+Lines: 45-45
+Type: assign
+Code:
+```systemverilog
+    assign full  = (wr_ptr == rd_ptr) && !wrap_bit;
+```

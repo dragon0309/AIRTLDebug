@@ -1,0 +1,149 @@
+{
+  "case_name": "vending_machine_fsm_bug",
+  "case_path": "benchmarks/vending_machine_fsm_bug",
+  "spec": "# Vending Machine FSM Bug Benchmark\n\n## Overview\n\nA coin-operated vending machine FSM that collects 10/25 cent coins until the price is met, then dispenses.\n\n## Parameters\n\n- `PRICE = 50`\n\n## Interface\n\n| Signal      | Direction | Description                          |\n|-------------|-----------|--------------------------------------|\n| `clk`       | input     | Clock                                |\n| `reset`     | input     | Synchronous reset                    |\n| `coin`      | input     | 2-bit coin select (1=10, 2=25)       |\n| `state`     | output    | Current FSM state                    |\n| `next_state`| output    | Combinational next state             |\n| `credit`    | output    | Accumulated credit                   |\n| `dispense`  | output    | Dispense pulse when item vended      |\n| `refund`    | output    | Refund pulse                         |\n\n## Expected Behavior\n\n- Accept coins in `ST_COLLECT` until `credit >= PRICE`.\n- Transition to `ST_DISPENSE` and assert `dispense` for one cycle when enough credit is collected.\n\n## Top Module\n\n`vending_machine`\n",
+  "buggy_rtl": "module vending_machine #(\n    parameter PRICE = 50\n) (\n    input  wire       clk,\n    input  wire       reset,\n    input  wire [1:0] coin,\n    output reg  [2:0] state,\n    output reg  [2:0] next_state,\n    output reg  [7:0] credit,\n    output reg        dispense,\n    output reg        refund\n);\n\n    localparam ST_IDLE    = 3'd0;\n    localparam ST_COLLECT = 3'd1;\n    localparam ST_DISPENSE = 3'd2;\n    localparam ST_REFUND  = 3'd3;\n\n    always @(*) begin\n        next_state = state;\n        case (state)\n            ST_IDLE: begin\n                if (coin != 2'd0)\n                    next_state = ST_COLLECT;\n            end\n            ST_COLLECT: begin\n                if (credit >= PRICE)\n                    next_state = ST_DISPENSE;\n            end\n            ST_DISPENSE: next_state = ST_IDLE;\n            ST_REFUND:   next_state = ST_IDLE;\n            default:     next_state = ST_IDLE;\n        endcase\n    end\n\n    always @(posedge clk) begin\n        if (reset) begin\n            state    <= ST_IDLE;\n            credit   <= 8'd0;\n            dispense <= 1'b0;\n            refund   <= 1'b0;\n        end else begin\n            state <= next_state;\n\n            dispense <= 1'b0;\n            refund   <= 1'b0;\n\n            case (state)\n                ST_IDLE: begin\n                    credit <= 8'd0;\n                end\n                ST_COLLECT: begin\n                    case (coin)\n                        2'd1: credit <= credit + 8'd10;\n                        2'd2: credit <= credit + 8'd25;\n                        default: credit <= credit;\n                    endcase\n                    // Bug: never assert dispense when credit is sufficient.\n                end\n                ST_DISPENSE: begin\n                    credit <= credit - PRICE;\n                end\n                ST_REFUND: begin\n                    refund <= 1'b1;\n                    credit <= 8'd0;\n                end\n                default: ;\n            endcase\n        end\n    end\n\nendmodule\n",
+  "testbench": "`timescale 1ns/1ps\n\nmodule tb;\n\n    localparam PRICE = 50;\n\n    reg clk;\n    reg reset;\n    reg [1:0] coin;\n    wire [2:0] state;\n    wire [2:0] next_state;\n    wire [7:0] credit;\n    wire dispense;\n    wire refund;\n\n    integer cycle;\n    reg pending_dispense_check;\n\n    vending_machine #(.PRICE(PRICE)) dut (\n        .clk(clk),\n        .reset(reset),\n        .coin(coin),\n        .state(state),\n        .next_state(next_state),\n        .credit(credit),\n        .dispense(dispense),\n        .refund(refund)\n    );\n\n    initial clk = 1'b0;\n    always #5 clk = ~clk;\n\n    initial begin\n        cycle = 0;\n        pending_dispense_check = 1'b0;\n        reset = 1'b1;\n        coin  = 2'd0;\n        repeat (2) @(posedge clk);\n        reset = 1'b0;\n    end\n\n    always @(posedge clk) begin\n        cycle = cycle + 1;\n        coin = 2'd0;\n\n        if (!reset) begin\n            case (cycle)\n                3: coin = 2'd2;\n                7: coin = 2'd2;\n                9: coin = 2'd1;\n                default: coin = 2'd0;\n            endcase\n        end\n    end\n\n    always @(posedge clk) begin\n        #1;\n        if (!reset) begin\n            if (cycle == 9 && credit >= PRICE && dispense !== 1'b1)\n                pending_dispense_check = 1'b1;\n\n            if (cycle == 10 && pending_dispense_check) begin\n                if (dispense === 1'b1) begin\n                    $display(\"[PASS] all checks passed\");\n                    $finish;\n                end else begin\n                    $display(\n                        \"[FAIL] cycle=9 signal=dispense expected=1 actual=0 message=\\\"dispense was not asserted after enough credit\\\"\"\n                    );\n                    $finish;\n                end\n            end\n        end\n    end\n\n    initial begin\n        #500;\n        $display(\n            \"[FAIL] cycle=%0d signal=dispense expected=1 actual=0 message=\\\"simulation timeout before dispense check\\\"\",\n            cycle\n        );\n        $finish;\n    end\n\nendmodule\n",
+  "simulation": {
+    "buggy": {
+      "status": "FAIL",
+      "log_path": "outputs/vending_machine_fsm_bug/buggy_sim.log"
+    },
+    "fixed": {
+      "status": "PASS",
+      "log_path": "outputs/vending_machine_fsm_bug/fixed_sim.log"
+    }
+  },
+  "parsed_failure": {
+    "status": "FAIL",
+    "failure_cycle": 9,
+    "failed_signal": "dispense",
+    "expected": "1",
+    "actual": "0",
+    "message": "dispense was not asserted after enough credit",
+    "raw_failure_line": "[FAIL] cycle=9 signal=dispense expected=1 actual=0 message=\"dispense was not asserted after enough credit\"",
+    "all_failure_lines": [
+      "[FAIL] cycle=9 signal=dispense expected=1 actual=0 message=\"dispense was not asserted after enough credit\""
+    ]
+  },
+  "extracted_context": {
+    "suspicious_signals": [
+      "dispense",
+      "clk",
+      "reset",
+      "state",
+      "ST_IDLE",
+      "credit",
+      "d0",
+      "b0",
+      "refund",
+      "next_state",
+      "ST_COLLECT",
+      "coin",
+      "d1",
+      "d10",
+      "d2",
+      "d25",
+      "Bug",
+      "never",
+      "assert",
+      "when",
+      "is",
+      "sufficient",
+      "ST_DISPENSE",
+      "PRICE",
+      "ST_REFUND",
+      "b1"
+    ],
+    "suspicious_code_blocks": [
+      {
+        "type": "sequential_always",
+        "file": "design_buggy.sv",
+        "start_line": 36,
+        "end_line": 70,
+        "code": "    always @(posedge clk) begin\n        if (reset) begin\n            state    <= ST_IDLE;\n            credit   <= 8'd0;\n            dispense <= 1'b0;\n            refund   <= 1'b0;\n        end else begin\n            state <= next_state;\n\n            dispense <= 1'b0;\n            refund   <= 1'b0;\n\n            case (state)\n                ST_IDLE: begin\n                    credit <= 8'd0;\n                end\n                ST_COLLECT: begin\n                    case (coin)\n                        2'd1: credit <= credit + 8'd10;\n                        2'd2: credit <= credit + 8'd25;\n                        default: credit <= credit;\n                    endcase\n                    // Bug: never assert dispense when credit is sufficient.\n                end\n                ST_DISPENSE: begin\n                    credit <= credit - PRICE;\n                end\n                ST_REFUND: begin\n                    refund <= 1'b1;\n                    credit <= 8'd0;\n                end\n                default: ;\n            endcase\n        end\n    end",
+        "matched_signals": [
+          "clk",
+          "reset",
+          "state",
+          "ST_IDLE",
+          "credit",
+          "d0",
+          "dispense",
+          "b0",
+          "refund",
+          "next_state",
+          "ST_COLLECT",
+          "coin",
+          "d1",
+          "d10",
+          "d2",
+          "d25",
+          "Bug",
+          "never",
+          "assert",
+          "when",
+          "is",
+          "sufficient",
+          "ST_DISPENSE",
+          "PRICE",
+          "ST_REFUND",
+          "b1"
+        ]
+      },
+      {
+        "type": "case",
+        "file": "design_buggy.sv",
+        "start_line": 53,
+        "end_line": 71,
+        "code": "                    case (coin)\n                        2'd1: credit <= credit + 8'd10;\n                        2'd2: credit <= credit + 8'd25;\n                        default: credit <= credit;\n                    endcase\n                    // Bug: never assert dispense when credit is sufficient.\n                end\n                ST_DISPENSE: begin\n                    credit <= credit - PRICE;\n                end\n                ST_REFUND: begin\n                    refund <= 1'b1;\n                    credit <= 8'd0;\n                end\n                default: ;\n            endcase\n        end\n    end\n",
+        "matched_signals": [
+          "coin",
+          "d1",
+          "credit",
+          "d10",
+          "d2",
+          "d25",
+          "Bug",
+          "never",
+          "assert",
+          "dispense",
+          "when",
+          "is",
+          "sufficient",
+          "ST_DISPENSE",
+          "PRICE",
+          "ST_REFUND",
+          "refund",
+          "b1",
+          "d0"
+        ]
+      }
+    ],
+    "extraction_warnings": []
+  },
+  "ground_truth": {
+    "case_name": "vending_machine_fsm_bug",
+    "bug_type": "fsm output timing",
+    "root_cause": "The FSM enters ST_DISPENSE but the sequential output logic never asserts dispense when credit reaches the price.",
+    "suspicious_signals": [
+      "state",
+      "dispense",
+      "credit",
+      "next_state"
+    ],
+    "suspicious_regions": [
+      {
+        "file": "design_buggy.sv",
+        "start_line": 36,
+        "end_line": 68,
+        "description": "sequential always block with FSM state and output case statement"
+      }
+    ],
+    "expected_fix": "Assert dispense in ST_DISPENSE when credit >= PRICE."
+  },
+  "fix_verification": {
+    "enabled": true,
+    "status": "PASS"
+  }
+}

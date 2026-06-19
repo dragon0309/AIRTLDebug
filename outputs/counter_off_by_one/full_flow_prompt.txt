@@ -1,0 +1,97 @@
+You are an RTL debugging assistant.
+
+You are given:
+1. Design specification
+2. Parsed simulation failure
+3. Suspicious signals
+4. Extracted RTL code blocks
+
+Task:
+Find the most likely root cause of the RTL bug.
+
+Rules:
+- Base your answer only on the given RTL code and simulation evidence.
+- Do not invent signals that do not exist.
+- If the evidence is insufficient, state what is missing.
+- Explain why the failure happens.
+- Explain how the suggested fix addresses the failure.
+
+Required output format:
+Return ONLY a valid JSON object with the following keys:
+{
+  "bug_summary": "...",
+  "suspicious_signals": ["..."],
+  "suspicious_regions": ["..."],
+  "root_cause": "...",
+  "suggested_fix": "...",
+  "evidence": "...",
+  "confidence_score": "..."
+}
+Do not wrap the JSON in Markdown code fences.
+
+# Design Specification
+
+# Counter Off-By-One Benchmark
+
+## Overview
+
+A simple enabled counter that asserts `done` when it reaches `MAX`.
+
+## Parameters
+
+- `MAX = 16`
+
+## Interface
+
+| Signal  | Direction | Description                          |
+|---------|-----------|--------------------------------------|
+| `clk`   | input     | Rising-edge clock                    |
+| `reset` | input     | Synchronous active-high reset        |
+| `enable`| input     | Count enable                         |
+| `count` | output    | Current counter value (0 to MAX)     |
+| `done`  | output    | High when counter has reached `MAX`  |
+
+## Expected Behavior
+
+- After reset, when `enable` is high, `count` increments once per clock cycle until it reaches `MAX`.
+- `done` must remain low while `count < MAX`.
+- `done` must be high when `count == MAX`.
+
+## Top Module
+
+`counter`
+
+
+# Parsed Simulation Failure
+
+- Status: FAIL
+- Failure cycle: 17
+- Failed signal: done
+- Expected: 0
+- Actual: 1
+- Message: done asserted too early
+- Raw failure line: [FAIL] cycle=17 signal=done expected=0 actual=1 message="done asserted too early"
+
+# Suspicious Signals
+
+done, clk, reset, count, enable, MAX
+
+# Extracted RTL Code Blocks
+
+File: design_buggy.sv
+Lines: 11-21
+Type: sequential_always
+Code:
+```systemverilog
+    always @(posedge clk) begin
+        if (reset) begin
+            count <= 5'd0;
+            done  <= 1'b0;
+        end else if (enable) begin
+            if (count < MAX)
+                count <= count + 1'b1;
+            // Bug: done asserted when count reaches MAX-1 instead of MAX.
+            done <= (count == MAX - 1);
+        end
+    end
+```

@@ -1,0 +1,59 @@
+{
+  "suspicious_signals": [
+    "full",
+    "clk",
+    "reset",
+    "wr_ptr",
+    "PTR_W",
+    "b0",
+    "rd_ptr",
+    "wrap_bit",
+    "wr_en",
+    "fifo_full",
+    "mem",
+    "DEPTH",
+    "b1",
+    "rd_en",
+    "empty"
+  ],
+  "suspicious_code_blocks": [
+    {
+      "type": "sequential_always",
+      "file": "design_buggy.sv",
+      "start_line": 20,
+      "end_line": 42,
+      "code": "    always @(posedge clk) begin\n        if (reset) begin\n            wr_ptr   <= {PTR_W{1'b0}};\n            rd_ptr   <= {PTR_W{1'b0}};\n            wrap_bit <= 1'b0;\n        end else begin\n            if (wr_en && !fifo_full) begin\n                mem[wr_ptr] <= mem[wr_ptr];\n                if (wr_ptr == DEPTH - 1) begin\n                    wr_ptr   <= {PTR_W{1'b0}};\n                    wrap_bit <= ~wrap_bit;\n                end else begin\n                    wr_ptr <= wr_ptr + 1'b1;\n                end\n            end\n            if (rd_en && !empty) begin\n                if (rd_ptr == DEPTH - 1)\n                    rd_ptr <= {PTR_W{1'b0}};\n                else\n                    rd_ptr <= rd_ptr + 1'b1;\n            end\n        end\n    end",
+      "matched_signals": [
+        "full",
+        "clk",
+        "reset",
+        "wr_ptr",
+        "PTR_W",
+        "b0",
+        "rd_ptr",
+        "wrap_bit",
+        "wr_en",
+        "fifo_full",
+        "mem",
+        "DEPTH",
+        "b1",
+        "rd_en",
+        "empty"
+      ]
+    },
+    {
+      "type": "assign",
+      "file": "design_buggy.sv",
+      "start_line": 45,
+      "end_line": 45,
+      "code": "    assign full  = (wr_ptr == rd_ptr) && !wrap_bit;",
+      "matched_signals": [
+        "full",
+        "wr_ptr",
+        "rd_ptr",
+        "wrap_bit"
+      ]
+    }
+  ],
+  "extraction_warnings": []
+}

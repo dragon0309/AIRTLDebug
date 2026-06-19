@@ -1,0 +1,2 @@
+[FAIL] cycle=17 signal=done expected=0 actual=1 message="done asserted too early"
+benchmarks/counter_off_by_one/tb.sv:48: $finish called at 176000 (1ps)

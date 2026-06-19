@@ -1,0 +1,93 @@
+{
+  "case_name": "counter_off_by_one",
+  "case_path": "benchmarks/counter_off_by_one",
+  "spec": "# Counter Off-By-One Benchmark\n\n## Overview\n\nA simple enabled counter that asserts `done` when it reaches `MAX`.\n\n## Parameters\n\n- `MAX = 16`\n\n## Interface\n\n| Signal  | Direction | Description                          |\n|---------|-----------|--------------------------------------|\n| `clk`   | input     | Rising-edge clock                    |\n| `reset` | input     | Synchronous active-high reset        |\n| `enable`| input     | Count enable                         |\n| `count` | output    | Current counter value (0 to MAX)     |\n| `done`  | output    | High when counter has reached `MAX`  |\n\n## Expected Behavior\n\n- After reset, when `enable` is high, `count` increments once per clock cycle until it reaches `MAX`.\n- `done` must remain low while `count < MAX`.\n- `done` must be high when `count == MAX`.\n\n## Top Module\n\n`counter`\n",
+  "buggy_rtl": "module counter #(\n    parameter MAX = 16\n) (\n    input  wire       clk,\n    input  wire       reset,\n    input  wire       enable,\n    output reg  [4:0] count,\n    output reg        done\n);\n\n    always @(posedge clk) begin\n        if (reset) begin\n            count <= 5'd0;\n            done  <= 1'b0;\n        end else if (enable) begin\n            if (count < MAX)\n                count <= count + 1'b1;\n            // Bug: done asserted when count reaches MAX-1 instead of MAX.\n            done <= (count == MAX - 1);\n        end\n    end\n\nendmodule\n",
+  "testbench": "`timescale 1ns/1ps\n\nmodule tb;\n\n    localparam MAX = 16;\n\n    reg clk;\n    reg reset;\n    reg enable;\n    wire [4:0] count;\n    wire done;\n\n    integer cycle;\n    reg seen_max;\n\n    counter #(.MAX(MAX)) dut (\n        .clk(clk),\n        .reset(reset),\n        .enable(enable),\n        .count(count),\n        .done(done)\n    );\n\n    initial clk = 1'b0;\n    always #5 clk = ~clk;\n\n    initial begin\n        cycle    = 0;\n        seen_max = 1'b0;\n        reset    = 1'b1;\n        enable   = 1'b0;\n        repeat (2) @(posedge clk);\n        reset  = 1'b0;\n        enable = 1'b1;\n    end\n\n    always @(posedge clk) begin\n        cycle = cycle + 1;\n        #1;\n        if (!reset && enable) begin\n            if (count == MAX && !seen_max) begin\n                seen_max = 1'b1;\n                if (done === 1'b1) begin\n                    $display(\n                        \"[FAIL] cycle=%0d signal=done expected=0 actual=1 message=\\\"done asserted too early\\\"\",\n                        count + 1\n                    );\n                    $finish;\n                end\n            end\n            if (count == MAX && seen_max && done === 1'b1) begin\n                $display(\"[PASS] all checks passed\");\n                $finish;\n            end\n        end\n    end\n\n    initial begin\n        #500;\n        $display(\n            \"[FAIL] cycle=%0d signal=done expected=1 actual=0 message=\\\"simulation timeout before pass\\\"\",\n            cycle\n        );\n        $finish;\n    end\n\nendmodule\n",
+  "simulation": {
+    "buggy": {
+      "status": "FAIL",
+      "log_path": "outputs/counter_off_by_one/buggy_sim.log"
+    }
+  },
+  "parsed_failure": {
+    "status": "FAIL",
+    "failure_cycle": 17,
+    "failed_signal": "done",
+    "expected": "0",
+    "actual": "1",
+    "message": "done asserted too early",
+    "raw_failure_line": "[FAIL] cycle=17 signal=done expected=0 actual=1 message=\"done asserted too early\"",
+    "all_failure_lines": [
+      "[FAIL] cycle=17 signal=done expected=0 actual=1 message=\"done asserted too early\""
+    ]
+  },
+  "extracted_context": {
+    "suspicious_signals": [
+      "done",
+      "clk",
+      "reset",
+      "count",
+      "d0",
+      "b0",
+      "enable",
+      "MAX",
+      "b1",
+      "Bug",
+      "asserted",
+      "when",
+      "reaches",
+      "instead",
+      "of"
+    ],
+    "suspicious_code_blocks": [
+      {
+        "type": "sequential_always",
+        "file": "design_buggy.sv",
+        "start_line": 11,
+        "end_line": 21,
+        "code": "    always @(posedge clk) begin\n        if (reset) begin\n            count <= 5'd0;\n            done  <= 1'b0;\n        end else if (enable) begin\n            if (count < MAX)\n                count <= count + 1'b1;\n            // Bug: done asserted when count reaches MAX-1 instead of MAX.\n            done <= (count == MAX - 1);\n        end\n    end",
+        "matched_signals": [
+          "clk",
+          "reset",
+          "count",
+          "d0",
+          "done",
+          "b0",
+          "enable",
+          "MAX",
+          "b1",
+          "Bug",
+          "asserted",
+          "when",
+          "reaches",
+          "instead",
+          "of"
+        ]
+      }
+    ],
+    "extraction_warnings": []
+  },
+  "ground_truth": {
+    "case_name": "counter_off_by_one",
+    "bug_type": "counter off-by-one",
+    "root_cause": "done is asserted one cycle too early because the comparison condition uses MAX - 1.",
+    "suspicious_signals": [
+      "count",
+      "done"
+    ],
+    "suspicious_regions": [
+      {
+        "file": "design_buggy.sv",
+        "start_line": 11,
+        "end_line": 21,
+        "description": "sequential always block that updates count and done"
+      }
+    ],
+    "expected_fix": "Compare count with MAX, or compute next_count and compare next_count with MAX."
+  },
+  "fix_verification": {
+    "enabled": false,
+    "status": null
+  }
+}

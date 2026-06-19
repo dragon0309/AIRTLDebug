@@ -1,0 +1,12 @@
+{
+  "status": "FAIL",
+  "failure_cycle": 9,
+  "failed_signal": "dispense",
+  "expected": "1",
+  "actual": "0",
+  "message": "dispense was not asserted after enough credit",
+  "raw_failure_line": "[FAIL] cycle=9 signal=dispense expected=1 actual=0 message=\"dispense was not asserted after enough credit\"",
+  "all_failure_lines": [
+    "[FAIL] cycle=9 signal=dispense expected=1 actual=0 message=\"dispense was not asserted after enough credit\""
+  ]
+}

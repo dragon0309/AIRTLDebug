@@ -1,0 +1,12 @@
+{
+  "status": "FAIL",
+  "failure_cycle": 17,
+  "failed_signal": "done",
+  "expected": "0",
+  "actual": "1",
+  "message": "done asserted too early",
+  "raw_failure_line": "[FAIL] cycle=17 signal=done expected=0 actual=1 message=\"done asserted too early\"",
+  "all_failure_lines": [
+    "[FAIL] cycle=17 signal=done expected=0 actual=1 message=\"done asserted too early\""
+  ]
+}

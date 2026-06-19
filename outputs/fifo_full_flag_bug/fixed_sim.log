@@ -1,0 +1,2 @@
+[PASS] all checks passed
+benchmarks/fifo_full_flag_bug/tb.sv:60: $finish called at 115000 (1ps)

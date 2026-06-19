@@ -1,0 +1,2 @@
+[PASS] all checks passed
+benchmarks/vending_machine_fsm_bug/tb.sv:65: $finish called at 96000 (1ps)

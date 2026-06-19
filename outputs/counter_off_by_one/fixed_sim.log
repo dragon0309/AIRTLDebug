@@ -1,0 +1,2 @@
+[PASS] all checks passed
+benchmarks/counter_off_by_one/tb.sv:53: $finish called at 186000 (1ps)

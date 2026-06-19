@@ -1,0 +1,149 @@
+You are an RTL debugging assistant.
+
+You are given:
+1. Design specification
+2. Parsed simulation failure
+3. Suspicious signals
+4. Extracted RTL code blocks
+
+Task:
+Find the most likely root cause of the RTL bug.
+
+Rules:
+- Base your answer only on the given RTL code and simulation evidence.
+- Do not invent signals that do not exist.
+- If the evidence is insufficient, state what is missing.
+- Explain why the failure happens.
+- Explain how the suggested fix addresses the failure.
+
+Required output format:
+Return ONLY a valid JSON object with the following keys:
+{
+  "bug_summary": "...",
+  "suspicious_signals": ["..."],
+  "suspicious_regions": ["..."],
+  "root_cause": "...",
+  "suggested_fix": "...",
+  "evidence": "...",
+  "confidence_score": "..."
+}
+Do not wrap the JSON in Markdown code fences.
+
+# Design Specification
+
+# Vending Machine FSM Bug Benchmark
+
+## Overview
+
+A coin-operated vending machine FSM that collects 10/25 cent coins until the price is met, then dispenses.
+
+## Parameters
+
+- `PRICE = 50`
+
+## Interface
+
+| Signal      | Direction | Description                          |
+|-------------|-----------|--------------------------------------|
+| `clk`       | input     | Clock                                |
+| `reset`     | input     | Synchronous reset                    |
+| `coin`      | input     | 2-bit coin select (1=10, 2=25)       |
+| `state`     | output    | Current FSM state                    |
+| `next_state`| output    | Combinational next state             |
+| `credit`    | output    | Accumulated credit                   |
+| `dispense`  | output    | Dispense pulse when item vended      |
+| `refund`    | output    | Refund pulse                         |
+
+## Expected Behavior
+
+- Accept coins in `ST_COLLECT` until `credit >= PRICE`.
+- Transition to `ST_DISPENSE` and assert `dispense` for one cycle when enough credit is collected.
+
+## Top Module
+
+`vending_machine`
+
+
+# Parsed Simulation Failure
+
+- Status: FAIL
+- Failure cycle: 9
+- Failed signal: dispense
+- Expected: 1
+- Actual: 0
+- Message: dispense was not asserted after enough credit
+- Raw failure line: [FAIL] cycle=9 signal=dispense expected=1 actual=0 message="dispense was not asserted after enough credit"
+
+# Suspicious Signals
+
+dispense, clk, reset, state, ST_IDLE, credit, refund, next_state, ST_COLLECT, coin, d1, d10, d2, d25, never, assert, is, sufficient, ST_DISPENSE, PRICE, ST_REFUND
+
+# Extracted RTL Code Blocks
+
+File: design_buggy.sv
+Lines: 36-70
+Type: sequential_always
+Code:
+```systemverilog
+    always @(posedge clk) begin
+        if (reset) begin
+            state    <= ST_IDLE;
+            credit   <= 8'd0;
+            dispense <= 1'b0;
+            refund   <= 1'b0;
+        end else begin
+            state <= next_state;
+
+            dispense <= 1'b0;
+            refund   <= 1'b0;
+
+            case (state)
+                ST_IDLE: begin
+                    credit <= 8'd0;
+                end
+                ST_COLLECT: begin
+                    case (coin)
+                        2'd1: credit <= credit + 8'd10;
+                        2'd2: credit <= credit + 8'd25;
+                        default: credit <= credit;
+                    endcase
+                    // Bug: never assert dispense when credit is sufficient.
+                end
+                ST_DISPENSE: begin
+                    credit <= credit - PRICE;
+                end
+                ST_REFUND: begin
+                    refund <= 1'b1;
+                    credit <= 8'd0;
+                end
+                default: ;
+            endcase
+        end
+    end
+```
+
+File: design_buggy.sv
+Lines: 53-71
+Type: case
+Code:
+```systemverilog
+                    case (coin)
+                        2'd1: credit <= credit + 8'd10;
+                        2'd2: credit <= credit + 8'd25;
+                        default: credit <= credit;
+                    endcase
+                    // Bug: never assert dispense when credit is sufficient.
+                end
+                ST_DISPENSE: begin
+                    credit <= credit - PRICE;
+                end
+                ST_REFUND: begin
+                    refund <= 1'b1;
+                    credit <= 8'd0;
+                end
+                default: ;
+            endcase
+        end
+    end
+
+```

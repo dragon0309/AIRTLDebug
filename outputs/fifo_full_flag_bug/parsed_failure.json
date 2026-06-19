@@ -1,0 +1,12 @@
+{
+  "status": "FAIL",
+  "failure_cycle": 12,
+  "failed_signal": "full",
+  "expected": "1",
+  "actual": "0",
+  "message": "full flag ignores wrap-around state",
+  "raw_failure_line": "[FAIL] cycle=12 signal=full expected=1 actual=0 message=\"full flag ignores wrap-around state\"",
+  "all_failure_lines": [
+    "[FAIL] cycle=12 signal=full expected=1 actual=0 message=\"full flag ignores wrap-around state\""
+  ]
+}

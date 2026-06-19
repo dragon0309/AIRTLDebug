@@ -1,0 +1,4 @@
+case_name,buggy_status,fixed_status,failed_signal,failure_cycle,debug_report,prompt
+counter_off_by_one,FAIL,PASS,done,17,outputs/counter_off_by_one/debug_report.md,outputs/counter_off_by_one/full_flow_prompt.txt
+fifo_full_flag_bug,FAIL,PASS,full,12,outputs/fifo_full_flag_bug/debug_report.md,outputs/fifo_full_flag_bug/full_flow_prompt.txt
+vending_machine_fsm_bug,FAIL,PASS,dispense,9,outputs/vending_machine_fsm_bug/debug_report.md,outputs/vending_machine_fsm_bug/full_flow_prompt.txt

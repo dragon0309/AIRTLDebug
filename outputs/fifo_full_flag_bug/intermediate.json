@@ -1,0 +1,112 @@
+{
+  "case_name": "fifo_full_flag_bug",
+  "case_path": "benchmarks/fifo_full_flag_bug",
+  "spec": "# FIFO Full Flag Bug Benchmark\n\n## Overview\n\nAn 8-entry FIFO with separate read/write pointers and a wrap bit to distinguish full from empty.\n\n## Parameters\n\n- `DEPTH = 8`\n- Pointer width = 3 bits\n\n## Interface\n\n| Signal     | Direction | Description                              |\n|------------|-----------|------------------------------------------|\n| `clk`      | input     | Clock                                    |\n| `reset`    | input     | Synchronous reset                        |\n| `wr_en`    | input     | Write enable                             |\n| `rd_en`    | input     | Read enable                              |\n| `wr_ptr`   | output    | Write pointer                            |\n| `rd_ptr`   | output    | Read pointer                             |\n| `wrap_bit` | output    | Toggles when write pointer wraps         |\n| `full`     | output    | FIFO full flag                           |\n| `empty`    | output    | FIFO empty flag                          |\n\n## Expected Behavior\n\n- `empty` when `wr_ptr == rd_ptr` and no wrap has occurred.\n- `full` when `wr_ptr == rd_ptr` and the write pointer has wrapped at least once.\n\n## Top Module\n\n`fifo`\n",
+  "buggy_rtl": "module fifo #(\n    parameter DEPTH = 8,\n    parameter PTR_W = 3\n) (\n    input  wire             clk,\n    input  wire             reset,\n    input  wire             wr_en,\n    input  wire             rd_en,\n    output reg  [PTR_W-1:0] wr_ptr,\n    output reg  [PTR_W-1:0] rd_ptr,\n    output reg              wrap_bit,\n    output wire             full,\n    output wire             empty\n);\n\n    reg [PTR_W-1:0] mem [0:DEPTH-1];\n\n    wire fifo_full = (wr_ptr == rd_ptr) && wrap_bit;\n\n    always @(posedge clk) begin\n        if (reset) begin\n            wr_ptr   <= {PTR_W{1'b0}};\n            rd_ptr   <= {PTR_W{1'b0}};\n            wrap_bit <= 1'b0;\n        end else begin\n            if (wr_en && !fifo_full) begin\n                mem[wr_ptr] <= mem[wr_ptr];\n                if (wr_ptr == DEPTH - 1) begin\n                    wr_ptr   <= {PTR_W{1'b0}};\n                    wrap_bit <= ~wrap_bit;\n                end else begin\n                    wr_ptr <= wr_ptr + 1'b1;\n                end\n            end\n            if (rd_en && !empty) begin\n                if (rd_ptr == DEPTH - 1)\n                    rd_ptr <= {PTR_W{1'b0}};\n                else\n                    rd_ptr <= rd_ptr + 1'b1;\n            end\n        end\n    end\n\n    // Bug: full ignores wrap_bit, so a wrapped-full FIFO reads as not full.\n    assign full  = (wr_ptr == rd_ptr) && !wrap_bit;\n    assign empty = (wr_ptr == rd_ptr) && !wrap_bit;\n\nendmodule\n",
+  "testbench": "`timescale 1ns/1ps\n\nmodule tb;\n\n    localparam DEPTH = 8;\n\n    reg clk;\n    reg reset;\n    reg wr_en;\n    reg rd_en;\n    wire [2:0] wr_ptr;\n    wire [2:0] rd_ptr;\n    wire wrap_bit;\n    wire full;\n    wire empty;\n\n    integer cycle;\n\n    fifo #(.DEPTH(DEPTH)) dut (\n        .clk(clk),\n        .reset(reset),\n        .wr_en(wr_en),\n        .rd_en(rd_en),\n        .wr_ptr(wr_ptr),\n        .rd_ptr(rd_ptr),\n        .wrap_bit(wrap_bit),\n        .full(full),\n        .empty(empty)\n    );\n\n    initial clk = 1'b0;\n    always #5 clk = ~clk;\n\n    initial begin\n        cycle = 0;\n        reset = 1'b1;\n        wr_en = 1'b0;\n        rd_en = 1'b0;\n        repeat (2) @(posedge clk);\n        reset = 1'b0;\n    end\n\n    always @(posedge clk) begin\n        cycle = cycle + 1;\n        if (!reset) begin\n            if (cycle >= 3 && cycle <= 10)\n                wr_en = 1'b1;\n            else\n                wr_en = 1'b0;\n\n            if (cycle == 12) begin\n                if (full !== 1'b1) begin\n                    $display(\n                        \"[FAIL] cycle=%0d signal=full expected=1 actual=0 message=\\\"full flag ignores wrap-around state\\\"\",\n                        cycle\n                    );\n                    $finish;\n                end else begin\n                    $display(\"[PASS] all checks passed\");\n                    $finish;\n                end\n            end\n        end\n    end\n\n    initial begin\n        #500;\n        $display(\n            \"[FAIL] cycle=%0d signal=full expected=1 actual=0 message=\\\"simulation timeout before full check\\\"\",\n            cycle\n        );\n        $finish;\n    end\n\nendmodule\n",
+  "simulation": {
+    "buggy": {
+      "status": "FAIL",
+      "log_path": "outputs/fifo_full_flag_bug/buggy_sim.log"
+    },
+    "fixed": {
+      "status": "PASS",
+      "log_path": "outputs/fifo_full_flag_bug/fixed_sim.log"
+    }
+  },
+  "parsed_failure": {
+    "status": "FAIL",
+    "failure_cycle": 12,
+    "failed_signal": "full",
+    "expected": "1",
+    "actual": "0",
+    "message": "full flag ignores wrap-around state",
+    "raw_failure_line": "[FAIL] cycle=12 signal=full expected=1 actual=0 message=\"full flag ignores wrap-around state\"",
+    "all_failure_lines": [
+      "[FAIL] cycle=12 signal=full expected=1 actual=0 message=\"full flag ignores wrap-around state\""
+    ]
+  },
+  "extracted_context": {
+    "suspicious_signals": [
+      "full",
+      "clk",
+      "reset",
+      "wr_ptr",
+      "PTR_W",
+      "b0",
+      "rd_ptr",
+      "wrap_bit",
+      "wr_en",
+      "fifo_full",
+      "mem",
+      "DEPTH",
+      "b1",
+      "rd_en",
+      "empty"
+    ],
+    "suspicious_code_blocks": [
+      {
+        "type": "sequential_always",
+        "file": "design_buggy.sv",
+        "start_line": 20,
+        "end_line": 42,
+        "code": "    always @(posedge clk) begin\n        if (reset) begin\n            wr_ptr   <= {PTR_W{1'b0}};\n            rd_ptr   <= {PTR_W{1'b0}};\n            wrap_bit <= 1'b0;\n        end else begin\n            if (wr_en && !fifo_full) begin\n                mem[wr_ptr] <= mem[wr_ptr];\n                if (wr_ptr == DEPTH - 1) begin\n                    wr_ptr   <= {PTR_W{1'b0}};\n                    wrap_bit <= ~wrap_bit;\n                end else begin\n                    wr_ptr <= wr_ptr + 1'b1;\n                end\n            end\n            if (rd_en && !empty) begin\n                if (rd_ptr == DEPTH - 1)\n                    rd_ptr <= {PTR_W{1'b0}};\n                else\n                    rd_ptr <= rd_ptr + 1'b1;\n            end\n        end\n    end",
+        "matched_signals": [
+          "full",
+          "clk",
+          "reset",
+          "wr_ptr",
+          "PTR_W",
+          "b0",
+          "rd_ptr",
+          "wrap_bit",
+          "wr_en",
+          "fifo_full",
+          "mem",
+          "DEPTH",
+          "b1",
+          "rd_en",
+          "empty"
+        ]
+      },
+      {
+        "type": "assign",
+        "file": "design_buggy.sv",
+        "start_line": 45,
+        "end_line": 45,
+        "code": "    assign full  = (wr_ptr == rd_ptr) && !wrap_bit;",
+        "matched_signals": [
+          "full",
+          "wr_ptr",
+          "rd_ptr",
+          "wrap_bit"
+        ]
+      }
+    ],
+    "extraction_warnings": []
+  },
+  "ground_truth": {
+    "case_name": "fifo_full_flag_bug",
+    "bug_type": "fifo full flag logic",
+    "root_cause": "full is computed as wr_ptr == rd_ptr without considering wrap_bit, so full and empty are ambiguous.",
+    "suspicious_signals": [
+      "full",
+      "wr_ptr",
+      "rd_ptr",
+      "wrap_bit"
+    ],
+    "suspicious_regions": [
+      {
+        "file": "design_buggy.sv",
+        "start_line": 43,
+        "end_line": 44,
+        "description": "assign statements that compute full and empty"
+      }
+    ],
+    "expected_fix": "Assert full when wr_ptr == rd_ptr && wrap_bit is set."
+  },
+  "fix_verification": {
+    "enabled": true,
+    "status": "PASS"
+  }
+}
