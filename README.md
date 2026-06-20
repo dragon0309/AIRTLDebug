@@ -537,5 +537,11 @@ Total                          25 passed
 
 ## Demo Video
 
-> **Link:** *(To be added — please insert the demo video URL here)*
+YouTube:
 
+https://youtu.be/AayEsh5uOVE
+
+Note:
+
+This demo video contains no voice narration.
+All explanations are presented as on-screen text.
